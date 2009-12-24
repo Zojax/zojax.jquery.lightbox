@@ -1,0 +1,30 @@
+<configure 
+   xmlns="http://namespaces.zope.org/zope"
+   xmlns:browser="http://namespaces.zope.org/browser"
+   xmlns:zojax="http://namespaces.zope.org/zojax">
+
+  <zojax:resourcedirectory
+     name="jqueryLightbox" directory="images" />
+
+  <zojax:resourcedirectory
+     name="js" directory="js" />
+
+  <zojax:resourceinclude
+     name="jquery.lightbox.css"
+     library="jquery-plugins"
+     type="stylesheet" filetype="zrt"
+     file="css/jquery.lightbox.packed.css" />
+
+  <zojax:resourceinclude
+     name="jquery.lightbox.js"
+     library="jquery-plugins" require="jquery"
+     type="javascript" compression="yes"
+     file="js/jquery.lightbox.js" />
+
+  <!--zojax:resourceinclude
+     name="jquery.lightbox-init.js"
+     library="jquery-plugins"
+     type="javascript" compression="yes"
+     file="js/initlightbox.js" /-->
+
+</configure>
