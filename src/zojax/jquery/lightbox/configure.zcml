@@ -14,6 +14,12 @@
      library="jquery-plugins"
      type="stylesheet" filetype="zrt"
      file="css/jquery.lightbox.packed.css" />
+  
+  <zojax:resourceinclude
+     name="jquery.color.js"
+     library="jquery-plugins" require="jquery"
+     type="javascript"
+     file="js/jquery.color.js" />
 
   <zojax:resourceinclude
      name="jquery.lightbox.js"

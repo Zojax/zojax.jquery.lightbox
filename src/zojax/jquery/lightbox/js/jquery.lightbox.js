@@ -20,8 +20,8 @@
  *
  * @name jquery_lightbox: jquery.lightbox.js
  * @package jQuery Lightbox Plugin (balupton edition)
- * @version 1.3.4-final
- * @date September 12, 2008
+ * @version 1.3.7-final
+ * @date April 25, 2009
  * @category jQuery plugin
  * @author Benjamin "balupton" Lupton {@link http://www.balupton.com}
  * @copyright (c) 2008 Benjamin Arthur Lupton {@link http://www.balupton.com}
@@ -35,13 +35,35 @@
 	// More info: http://docs.jquery.com/Plugins/Authoring#Custom_Alias
 	
 	// Debug
-	if ( !$.browser.safari && typeof window.console !== 'undefined' && typeof window.console.log === 'function' )
-	{	// Use window.console
-		$.log = window.console.log;
-	}
-	else
-	{	// Don't use anything
-		$.log = function ( ) { };
+	if ( typeof $.log === 'undefined' ) {
+		if ( !$.browser.safari && typeof window.console !== 'undefined' && typeof window.console.log === 'function' )
+		{	// Use window.console
+			$.log = function(){
+				var args = [];
+			    for(var i = 0; i < arguments.length; i++) {
+			        args.push(arguments[i]);
+			    }
+			    window.console.log.apply(window.console, args);
+			}
+			$.console = {
+				log:	$.log,
+				debug:	window.console.debug	|| $.log,
+				warn:	window.console.warn		|| $.log,
+				error:	window.console.error	|| $.log,
+				trace:	window.console.trace	|| $.log
+			}
+		}
+		else
+		{	// Don't use anything
+			$.log = function ( ) { };
+			$.console = {
+				log:	$.log,
+				debug:	$.log,
+				warn:	$.log,
+				error:	alert,
+				trace:	$.log
+			};
+		}
 	}
 	
 	// Pre-Req
@@ -141,7 +163,7 @@
 		// Events?
 		if ( options.events )
 		{	// Add events
-			$(group).unbind().click(function(){
+			$(group).unbind('click').click(function(){
 				// Get obj
 				var obj = $(this);
 				// Get rel
@@ -386,7 +408,7 @@
 				
 				if ( !image )
 				{	// Error
-					$.log('ERROR', 'We dont know what we have:', obj);
+					$.console.error('We dont know what we have:', obj);
 					return false;
 				}
 				
@@ -430,7 +452,7 @@
 				// Determine image
 				if ( !image )
 				{	// Image doesn't exist
-					$.log('ERROR', 'The desired image doesn\'t exist: ', image, this.list);
+					$.console.error('The desired image does not exist: ', image, this.list);
 					return false;
 				}
 				
@@ -446,21 +468,35 @@
 		},
 		
 		// -----------------
-		// Options
+		// Variables
 		
 		constructed:		false,
+		compressed:			null,
+		
+		// -----------------
+		// Options
 		
 		src:				null,		// the source location of our js file
 		baseurl:			null,
 		
 		files: {
-			// If you are doing a repack with packer (http://dean.edwards.name/packer/) then append ".packed" onto the js and css files before you pack it.
-			js: {
-				lightbox:	'js/jquery.lightbox.js',
-				colorBlend:	'js/jquery.color.js'
+			compressed: {
+				js: {
+					lightbox:	'js/jquery.lightbox.min.js',
+					colorBlend:	'js/jquery.color.min.js'
+				},
+				css: {
+					lightbox:	'css/jquery.lightbox.css'
+				}
 			},
-			css: {
-				lightbox:	'css/jquery.lightbox.css'
+			uncompressed: {
+				js: {
+					lightbox:	'js/jquery.lightbox.js',
+					colorBlend:	'js/jquery.color.js'
+				},
+				css: {
+					lightbox:	'css/jquery.lightbox.css'
+				}
 			},
 			images: {
 				prev:		'images/prev.gif',
@@ -476,7 +512,7 @@
 			of:			'of',
 			close:		'Close X',
 			closeInfo:	'You can also click anywhere outside the image to close.',
-			download:	'Direct link to download the image.',
+			download:	'Download.',
 			help: {
 				close:		'Click to close',
 				interact:	'Hover to interact'
@@ -517,14 +553,15 @@
 		
 		colorBlend:		null,		// null - auto-detect, true - force, false - no
 		
-		download_link:	true,		// Display the download link
+		download_link:		true,	// Display the download link
 		
+		show_helper_text:	true,	// Display the helper text up the top right
 		show_linkback:		true,	// true, false
 		show_info:			'auto',	// auto - automaticly handle, true - force
 		show_extended_info:	'auto',	// auto - automaticly handle, true - force	
 		
 		// names of the options that can be modified
-		options:	['auto_scroll', 'auto_resize', 'download_link', 'show_info', 'show_extended_info', 'ie6_support', 'ie6_upgrade', 'colorBlend', 'baseurl', 'files', 'text', 'show_linkback', 'keys', 'opacity', 'padding', 'speed', 'rel', 'auto_relify'],
+		options:	['show_helper_text', 'auto_scroll', 'auto_resize', 'download_link', 'show_info', 'show_extended_info', 'ie6_support', 'ie6_upgrade', 'colorBlend', 'baseurl', 'files', 'text', 'show_linkback', 'keys', 'opacity', 'padding', 'speed', 'rel', 'auto_relify'],
 		
 		// -----------------
 		// Functions
@@ -543,39 +580,70 @@
 			var domReady = initial;
 			
 			// Prepare options
-			options = $.extend({}, options);
+			options = options || {};
 			
 			// -------------------
 			// Handle files
 			
+			// Prepend function to use later
+			var prepend = function(item, value) {
+				if ( typeof item === 'object' ) {
+					for (var i in item) {
+						item[i] = prepend(item[i], value);
+					}
+				} else if ( typeof value === 'array' ) {
+					for (var i=0,n=item.length; i<n; ++i) {
+						item[i] = prepend(item[i], value);
+					}
+				} else {
+					item = value+item;
+				}
+				return item;
+			}
+			
 			// Add baseurl
 			if ( initial && (typeof options.files === 'undefined') )
 			{	// Load the files like default
-			
+				
+				// Reset compressed
+				this.compressed = null;
+				
 				// Get the src of the first script tag that includes our js file (with or without an appendix)
-				this.src = $('script[src*='+this.files.js.lightbox+']:first').attr('src');
+				var $script = $('script[src*='+this.files.compressed.js.lightbox+']:first');
+				if ( $script.length !== 0 ) {
+					// Compressed
+					$.extend(true, this.files, this.files.compressed);
+					this.compressed = true;
+				} else {
+					// Uncompressed
+					$script = $('script[src*='+this.files.uncompressed.js.lightbox+']:first');
+					if ( $script.length !== 0 ) {
+						// Uncompressed
+						$.extend(true, this.files, this.files.uncompressed);
+						this.compressed = false;
+					} else {
+						// Nothing
+					}
+				}
 				
 				// Make sure we found ourselves
-				if ( !this.src )
+				if ( this.compressed === null )
 				{	// We didn't
-					// $.log('WARNING', 'Lightbox was not able to find it\'s javascript script tag necessary for auto-inclusion.');
+					$.console.error('Lightbox was not able to find it\'s javascript script tag necessary for auto-inclusion.');
 					// We don't work with files anymore, so don't care for domReady
 					domReady = false;
 				}
 				else
 				{	// We found ourself
-				
+					
+					// Grab the script src
+					this.src = $script.attr('src');
+					
 					// The baseurl is the src up until the start of our js file
 					this.baseurl = this.src.substring(0, this.src.indexOf(this.files.js.lightbox));
 					
-					// Apply baseurl to files
-					var me = this;
-					$.each(this.files, function(group, val){
-						$.each(this, function(file, val){
-							me.files[group][file] = me.baseurl+val;
-						});
-					});
-					delete me;
+					// Prepend baseurl to files
+					this.files = prepend(this.files, this.baseurl);
 					
 					// Now as we have source, we may have more params
 					options = $.extend(options, $.params_to_json(this.src));
@@ -585,13 +653,8 @@
 			else
 			if ( typeof options.files === 'object' )
 			{	// We have custom files
-				var me = this;
-				$.each(options.files, function(group, val){
-					$.each(this, function(file, val){
-						this[file] = me.baseurl+val;
-					});
-				});
-				delete me;
+				// Prepend baseurl to files
+				options.files = prepend(options.files, this.baseurl);
 			}
 			else
 			{	// Don't have any files, so no need to perform domReady
@@ -601,18 +664,18 @@
 			// -------------------
 			// Apply options
 			
-			for ( i in this.options )
+			for ( var i in this.options )
 			{	// Cycle through the options
 				var name = this.options[i];
 				if ( (typeof options[name] === 'object') && (typeof this[name] === 'object') )
 				{	// We have a group like text or files
-					this[name] = $.extend(this[name], options[name]);
+					this[name] = $.extend(true, this[name], options[name]);
 				}
 				else if ( typeof options[name] !== 'undefined' )
 				{	// We have that option, so apply it
 					this[name] = options[name];
 				}
-			}
+			}	delete i;
 			
 			// -------------------
 			// Figure out what to do
@@ -708,7 +771,7 @@
 			
 			// Append markup
 			$('#lightbox,#lightbox-overlay').remove();
-			$('body').append('<div id="lightbox-overlay"><div id="lightbox-overlay-text">'+(this.show_linkback?'<p><span id="lightbox-overlay-text-about"><a href="#" title="'+this.text.about.title+'">'+this.text.about.text+'</a></span></p><p>&nbsp;</p>':'')+'<p><span id="lightbox-overlay-text-close">'+this.text.help.close+'</span><br/>&nbsp;<span id="lightbox-overlay-text-interact">'+this.text.help.interact+'</span></p></div></div><div id="lightbox"><div id="lightbox-imageBox"><div id="lightbox-imageContainer"><img id="lightbox-image" /><div id="lightbox-nav"><a href="#" id="lightbox-nav-btnPrev"></a><a href="#" id="lightbox-nav-btnNext"></a></div><div id="lightbox-loading"><a href="#" id="lightbox-loading-link"><img src="' + this.files.images.loading + '" /></a></div></div></div><div id="lightbox-infoBox"><div id="lightbox-infoContainer"><div id="lightbox-infoHeader"><span id="lightbox-caption">'+(this.download_link ? '<a href="#" title="' + this.text.download + '" id="lightbox-caption-title"></a>' : '<span id="lightbox-caption-title"></span>')+'<span id="lightbox-caption-seperator"></span><span id="lightbox-caption-description"></span></span></div><div id="lightbox-infoFooter"><span id="lightbox-currentNumber"></span><span id="lightbox-close"><a href="#" id="lightbox-close-button" title="'+this.text.closeInfo+'">' + this.text.close + '</a></span></div><div id="lightbox-infoContainer-clear"></div></div></div></div>');
+			$('body').append('<div id="lightbox-overlay"><div id="lightbox-overlay-text">'+(this.show_linkback?'<p><span id="lightbox-overlay-text-about"><a href="#" title="'+this.text.about.title+'">'+this.text.about.text+'</a></span></p><p>&nbsp;</p>':'')+(this.show_helper_text?'<p><span id="lightbox-overlay-text-close">'+this.text.help.close+'</span><br/>&nbsp;<span id="lightbox-overlay-text-interact">'+this.text.help.interact+'</span></p>':'')+'</div></div><div id="lightbox"><div id="lightbox-imageBox"><div id="lightbox-imageContainer"><img id="lightbox-image" /><div id="lightbox-nav"><a href="#" id="lightbox-nav-btnPrev"></a><a href="#" id="lightbox-nav-btnNext"></a></div><div id="lightbox-loading"><a href="#" id="lightbox-loading-link"><img src="' + this.files.images.loading + '" /></a></div></div></div><div id="lightbox-infoBox"><div id="lightbox-infoContainer"><div id="lightbox-infoHeader"><span id="lightbox-caption">'+(this.download_link ? '<a href="#" title="' + this.text.download + '" id="lightbox-caption-title"></a>' : '<span id="lightbox-caption-title"></span>')+'<span id="lightbox-caption-seperator"></span><span id="lightbox-caption-description"></span></span></div><div id="lightbox-infoFooter"><span id="lightbox-currentNumber"></span><span id="lightbox-close"><a href="#" id="lightbox-close-button" title="'+this.text.closeInfo+'">' + this.text.close + '</a></span></div><div id="lightbox-infoContainer-clear"></div></div></div></div>');
 			
 			// Update Boxes - for some crazy reason this has to be before the hide in safari and konqueror
 			this.resizeBoxes();
@@ -749,7 +812,7 @@
 			// Apply events
 			
 			// If the window resizes, act appropriatly
-			$(window).unbind().resize(function ()
+			$(window).unbind('resize').resize(function ()
 			{	// The window has been resized
 				$.Lightbox.resizeBoxes('resized');
 			});
@@ -798,7 +861,7 @@
 			);
 			
 			// Image link
-		    $('#lightbox-caption-title').click(function(e){window.location = $(e.target).attr('href'); return false;});
+			$('#lightbox-caption-title').click(function(){window.open($(this).attr('href')); return false;});
 			
 			// Assign close clicks
 			$('#lightbox-overlay, #lightbox, #lightbox-loading-link, #lightbox-btnClose').unbind().click(function() {
@@ -827,7 +890,7 @@
 			var groups_n = 0;
 			var orig_rel = this.rel;
 			// Create the groups
-			$.each($('[@rel*='+orig_rel+']'), function(index, obj){
+			$.each($('[rel*='+orig_rel+']'), function(index, obj){
 				// Get the group
 				var rel = $(obj).attr('rel');
 				// Are we really a group
@@ -872,7 +935,7 @@
 			// Do we need to bother
 			if ( this.images.empty() )
 			{	// No images
-				$.log('WARNING', 'Lightbox started, but no images: ', image, images);
+				$.console.warn('WARNING', 'Lightbox started, but no images: ', image, images);
 				return false;
 			}
 			
@@ -984,7 +1047,7 @@
 			var image = this.images.active();
 			if ( !image || !image.width || !this.visible )
 			{	// No image or no visible lightbox, so we don't care
-				$.log('WARNING', 'A resize occured while no image or no lightbox...');
+				//$.console.warn('A resize occured while no image or no lightbox...');
 				return false;
 			}
 			
@@ -1156,7 +1219,7 @@
 			var skipped_step_2 = step > 2 && $('#lightbox-image').attr('src') !== image.src;
 			if ( skipped_step_1 || skipped_step_2 )
 			{	// Force step 1
-				$.log('We wanted to skip a few steps: ', image, step, skipped_step_1, skipped_step_2);
+				$.console.info('We wanted to skip a few steps: ', image, step, skipped_step_1, skipped_step_2);
 				step = 1;
 			}
 			
@@ -1295,12 +1358,12 @@
 					
 					// Apply event
 					$('#lightbox-imageBox').unbind('mouseover').mouseover(function(){
-						$('#lightbox-infoBox').slideDown('fast');
+						$('#lightbox-infoBox:not(:visible)').stop().slideDown('fast');
 					});
 					
 					// Apply event
 					$('#lightbox-infoBox').unbind('mouseover').mouseover(function(){
-						$('#lightbox-infoFooter').slideDown('fast');
+						$('#lightbox-infoFooter:not(:visible)').stop().slideDown('fast');
 					});
 					
 					// Forced show?
@@ -1345,7 +1408,7 @@
 				// ---------------------------------
 				// Error handling
 				default:
-					$.log('ERROR', 'Don\'t know what to do: ', image, step);
+					$.console.error('Don\'t know what to do: ', image, step);
 					return this.showImage(image, 1);
 					// break;
 				
@@ -1392,7 +1455,7 @@
 		},
 		
 		KeyboardNav_Disable: function ( ) {
-			$(document).unbind();
+			$(document).unbind('keydown');
 		},
 		
 		KeyboardNav_Action: function ( objEvent ) {
