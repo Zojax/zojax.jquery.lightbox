@@ -16,21 +16,9 @@
      file="css/jquery.lightbox.packed.css" />
   
   <zojax:resourceinclude
-     name="jquery.color.js"
-     library="jquery-plugins" require="jquery"
-     type="javascript"
-     file="js/jquery.color.js" />
-
-  <zojax:resourceinclude
      name="jquery.lightbox.js"
      library="jquery-plugins" require="jquery"
-     type="javascript"
-     file="js/jquery.lightbox.js" />
-
-  <!--zojax:resourceinclude
-     name="jquery.lightbox-init.js"
-     library="jquery-plugins"
-     type="javascript" compression="yes"
-     file="js/initlightbox.js" /-->
+     type="javascript" compression="true"
+     path="js/jquery.lightbox.js" />
 
 </configure>
