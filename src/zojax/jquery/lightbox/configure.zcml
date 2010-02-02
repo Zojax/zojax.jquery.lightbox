@@ -18,7 +18,8 @@
   <zojax:resourceinclude
      name="jquery.lightbox.js"
      library="jquery-plugins" require="jquery"
-     type="javascript" compression="true"
+     type="javascript" standalone="true"
+     compression="yes"
      path="js/jquery.lightbox.js" />
 
 </configure>
