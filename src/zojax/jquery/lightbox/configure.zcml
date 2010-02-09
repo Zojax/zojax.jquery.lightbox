@@ -4,22 +4,22 @@
    xmlns:zojax="http://namespaces.zope.org/zojax">
 
   <zojax:resourcedirectory
-     name="jqueryLightbox" directory="images" />
-
-  <zojax:resourcedirectory
-     name="js" directory="js" />
-
+     name="jquery.lightbox"
+     mapping=".css:zrt"
+     directory="resources" />
+     
   <zojax:resourceinclude
      name="jquery.lightbox.css"
-     library="jquery-plugins"
-     type="stylesheet" filetype="zrt"
-     file="css/jquery.lightbox.packed.css" />
-  
+     library="jquery-lightbox" require="jquery-plugins"
+     type="stylesheet"
+     compression="yes"
+     path="jquery.lightbox/css/jquery.lightbox.packed.css" />
+       
   <zojax:resourceinclude
      name="jquery.lightbox.js"
-     library="jquery-plugins" require="jquery"
+     library="jquery-lightbox" require="jquery-plugins"
      type="javascript" standalone="true"
      compression="yes"
-     path="js/jquery.lightbox.js" />
+     path="jquery.lightbox/js/jquery.lightbox.js" />
 
 </configure>
